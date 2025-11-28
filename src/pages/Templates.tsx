@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../lib/api';
-import { FileJson, Plus, Trash2, Edit } from 'lucide-react';
+import { FileJson, Plus, Trash2, Edit, Copy } from 'lucide-react';
 
 interface Template {
   id: number;
   name: string;
   statement_type: string;
+  template_definition: any; // We need this for duplication
 }
 
 export default function Templates() {
@@ -28,15 +29,29 @@ export default function Templates() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this template?")) return;
+  const handleDuplicate = async (template: Template) => {
     try {
-      // Note: You'll need to add a DELETE endpoint to your backend later if you want this to work.
-      // For now, this is a placeholder or you can implement the backend delete endpoint quickly.
-      alert("Delete functionality requires backend update. (Skipping for now)");
+      let definition = template.template_definition;
+      // Ensure it's parsed if it came as string
+      if (typeof definition === 'string') definition = JSON.parse(definition);
+
+      const payload = {
+        name: `${template.name} (Copy)`,
+        statement_type: template.statement_type,
+        template_definition: definition
+      };
+
+      await api.post('/templates/', payload);
+      alert("Template duplicated!");
+      fetchTemplates();
     } catch (e) {
-      alert("Failed to delete");
+      alert("Failed to duplicate template");
     }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("Delete functionality requires backend update. Proceed?")) return;
+    // Logic placeholder
   };
 
   if (loading) return <div>Loading Templates...</div>;
@@ -60,10 +75,18 @@ export default function Templates() {
               <div className="bg-orange-100 p-3 rounded-lg">
                 <FileJson size={24} className="text-orange-600" />
               </div>
-              <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition">
+              <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition">
+                <button 
+                  onClick={() => handleDuplicate(template)}
+                  className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg"
+                  title="Duplicate"
+                >
+                  <Copy size={16} />
+                </button>
                 <button 
                   onClick={() => handleDelete(template.id)}
                   className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
+                  title="Delete"
                 >
                   <Trash2 size={16} />
                 </button>
@@ -77,7 +100,7 @@ export default function Templates() {
             
             <div className="border-t border-gray-100 pt-4 mt-2">
               <Link 
-                to={`/templates/${template.id}`} // We will build this edit page next
+                to={`/templates/${template.id}`}
                 className="text-indigo-600 hover:text-indigo-800 text-sm font-medium flex items-center"
               >
                 <Edit size={14} className="mr-1" /> Edit Definition

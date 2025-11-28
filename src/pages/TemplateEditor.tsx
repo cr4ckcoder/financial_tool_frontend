@@ -255,15 +255,37 @@ export default function TemplateEditor() {
                       <div className="col-span-4">
                         <label className="text-[10px] uppercase font-bold text-gray-400">Mapped Account</label>
                         <select 
-                          value={item.account_head_id || ""} 
-                          onChange={(e) => updateItem(idx, 'account_head_id', Number(e.target.value))}
-                          className="w-full border rounded px-2 py-1 text-sm focus:ring-1 focus:ring-indigo-500 outline-none bg-white"
-                        >
-                          <option value="">Select Account...</option>
-                          {filteredAccounts.map(acc => (
-                            <option key={acc.id} value={acc.id}>{acc.name} ({acc.type})</option>
-                          ))}
-                        </select>
+                            value={item.account_head_id || ""} 
+                            onChange={(e) => {
+                                const newId = Number(e.target.value);
+                                const acc = accounts.find(a => a.id === newId);
+                                
+                                // Smart Label Logic:
+                                // If label is empty OR label matches the OLD account name (meaning user didn't customize it),
+                                // update it to the NEW account name.
+                                const oldAcc = accounts.find(a => a.id === item.account_head_id);
+                                const currentLabel = item.label || "";
+                                
+                                // Check if label appears customized
+                                const isDefaultLabel = currentLabel === "" || currentLabel === "Line Item Name" || (oldAcc && currentLabel === oldAcc.name);
+                                
+                                // Update State
+                                const newItems = [...items];
+                                newItems[idx] = { 
+                                ...newItems[idx], 
+                                account_head_id: newId,
+                                // Auto-update label if it wasn't customized
+                                label: (isDefaultLabel && acc) ? acc.name : currentLabel
+                                };
+                                setItems(newItems);
+                            }}
+                            className="w-full border rounded px-2 py-1 text-sm focus:ring-1 focus:ring-indigo-500 outline-none bg-white"
+                            >
+                            <option value="">Select Account...</option>
+                            {filteredAccounts.map(acc => (
+                                <option key={acc.id} value={acc.id}>{acc.name} ({acc.type})</option>
+                            ))}
+                            </select>
                       </div>
                       <div className="col-span-2">
                         <label className="text-[10px] uppercase font-bold text-gray-400">Note Ref</label>
