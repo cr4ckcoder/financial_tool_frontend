@@ -4,32 +4,27 @@ import { useAuth } from '../context/AuthContext';
 import api from '../lib/api';
 import { 
   Building2, FileText, FileJson, Plus, ArrowRight, 
-  Users, Activity, Layers 
+  Users, Activity, Layers, Briefcase, TrendingUp 
 } from 'lucide-react';
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const [stats, setStats] = useState({
-    companies: 0,
-    works: 0,
-    templates: 0
-  });
+  const [stats, setStats] = useState({ companies: 0, works: 0, templates: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchStats() {
       try {
-        // Fetch real data counts from your API
-        const [compRes, worksRes, templRes] = await Promise.all([
+        const results = await Promise.allSettled([
           api.get('/companies/'),
           api.get('/works/'),
           api.get('/templates/')
         ]);
         
         setStats({
-          companies: compRes.data.length,
-          works: worksRes.data.length,
-          templates: templRes.data.length
+          companies: results[0].status === 'fulfilled' ? results[0].value.data.length : 0,
+          works: results[1].status === 'fulfilled' ? results[1].value.data.length : 0,
+          templates: results[2].status === 'fulfilled' ? results[2].value.data.length : 0
         });
       } catch (e) {
         console.error("Failed to load stats");
@@ -40,18 +35,23 @@ export default function Dashboard() {
     fetchStats();
   }, []);
 
-  if (loading) return <div className="p-8 text-gray-500">Loading Dashboard...</div>;
+  if (loading) return (
+    <div className="flex items-center justify-center h-full text-gray-400 font-medium">
+      Loading Dashboard...
+    </div>
+  );
 
   return (
     <div className="space-y-8">
       {/* Header Section */}
-      <div className="flex justify-between items-end border-b border-gray-100 pb-5">
+      <div className="flex justify-between items-end pb-2">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
-          <p className="text-gray-500 mt-1">Overview of your financial workspace</p>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
+          <p className="text-slate-500 mt-1">Welcome back, get an overview of your workspace.</p>
         </div>
-        <div className="text-sm text-gray-500 bg-white px-3 py-1 rounded-full border border-gray-200 shadow-sm">
-          Logged in as <span className="font-semibold text-indigo-600">{user?.sub}</span>
+        <div className="hidden md:flex items-center text-sm font-medium text-slate-500 bg-white px-4 py-2 rounded-full border border-slate-200 shadow-sm">
+          <div className="w-2 h-2 rounded-full bg-emerald-500 mr-2 animate-pulse"></div>
+          System Status: Online
         </div>
       </div>
 
@@ -61,31 +61,31 @@ export default function Dashboard() {
           title="Total Clients" 
           value={stats.companies} 
           icon={<Building2 size={24} className="text-indigo-600" />}
-          bg="bg-indigo-50"
-          border="border-indigo-100"
+          gradient="from-indigo-500 to-indigo-600"
+          link="/companies"
         />
         <StatCard 
           title="Active Engagements" 
           value={stats.works} 
-          icon={<FileText size={24} className="text-green-600" />}
-          bg="bg-green-50"
-          border="border-green-100"
+          icon={<Briefcase size={24} className="text-emerald-600" />}
+          gradient="from-emerald-500 to-emerald-600"
+          link="/works"
         />
         <StatCard 
           title="Report Templates" 
           value={stats.templates} 
           icon={<FileJson size={24} className="text-orange-600" />}
-          bg="bg-orange-50"
-          border="border-orange-100"
+          gradient="from-orange-500 to-orange-600"
+          link="/templates"
         />
       </div>
 
       {/* Quick Actions Section */}
       <div>
-        <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+        <h2 className="text-lg font-bold text-slate-900 mb-5 flex items-center">
           <Activity size={20} className="mr-2 text-indigo-600" /> Quick Actions
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           <ActionCard 
             to="/companies" 
             title="Add Company" 
@@ -98,22 +98,20 @@ export default function Dashboard() {
             title="New Work" 
             desc="Start a new financial year"
             icon={<Layers size={20} />}
-            color="green"
+            color="emerald"
           />
           <ActionCard 
             to="/templates/new" 
-            title="Create Template" 
-            desc="Design report layout"
+            title="Design Template" 
+            desc="Create report layout"
             icon={<FileJson size={20} />}
             color="orange"
           />
-          
-          {/* Only Admins see the Staff button */}
           {user?.role === 'ADMIN' && (
             <ActionCard 
               to="/staff" 
               title="Manage Staff" 
-              desc="Add users & assignments"
+              desc="Add users & permissions"
               icon={<Users size={20} />}
               color="purple"
             />
@@ -124,43 +122,49 @@ export default function Dashboard() {
   );
 }
 
-// Reusable Stat Card Component
-function StatCard({ title, value, icon, bg, border }: any) {
+// Polished Stat Card
+function StatCard({ title, value, icon, gradient, link }: any) {
   return (
-    <div className={`${bg} p-6 rounded-xl border ${border} flex items-center justify-between shadow-sm transition hover:shadow-md`}>
-      <div>
-        <p className="text-xs font-bold uppercase text-gray-500 tracking-wider">{title}</p>
-        <p className="text-3xl font-extrabold text-gray-900 mt-1">{value}</p>
+    <Link to={link} className="relative group overflow-hidden bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+      <div className="flex justify-between items-start relative z-10">
+        <div>
+          <p className="text-xs font-bold uppercase text-slate-400 tracking-wider mb-1">{title}</p>
+          <p className="text-4xl font-bold text-slate-900">{value}</p>
+        </div>
+        <div className="p-3 bg-slate-50 rounded-xl group-hover:bg-white group-hover:shadow-sm transition-colors border border-transparent group-hover:border-slate-100">
+          {icon}
+        </div>
       </div>
-      <div className="p-3 bg-white rounded-lg shadow-sm">
-        {icon}
-      </div>
-    </div>
+      {/* Subtle bottom gradient bar */}
+      <div className={`absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r ${gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
+    </Link>
   );
 }
 
-// Reusable Action Card Component
+// Polished Action Card
 function ActionCard({ to, title, desc, icon, color }: any) {
-  const colorClasses: any = {
-    indigo: "hover:border-indigo-300 hover:bg-indigo-50 text-indigo-600",
-    green: "hover:border-green-300 hover:bg-green-50 text-green-600",
-    orange: "hover:border-orange-300 hover:bg-orange-50 text-orange-600",
-    purple: "hover:border-purple-300 hover:bg-purple-50 text-purple-600",
+  const themes: any = {
+    indigo: { text: "text-indigo-600", bg: "bg-indigo-50", hover: "group-hover:bg-indigo-600", icon: "group-hover:text-white" },
+    emerald: { text: "text-emerald-600", bg: "bg-emerald-50", hover: "group-hover:bg-emerald-600", icon: "group-hover:text-white" },
+    orange: { text: "text-orange-600", bg: "bg-orange-50", hover: "group-hover:bg-orange-600", icon: "group-hover:text-white" },
+    purple: { text: "text-purple-600", bg: "bg-purple-50", hover: "group-hover:bg-purple-600", icon: "group-hover:text-white" },
   };
+  
+  const theme = themes[color];
 
   return (
     <Link 
       to={to} 
-      className={`block p-4 bg-white border border-gray-200 rounded-xl transition-all duration-200 group ${colorClasses[color]}`}
+      className="block p-5 bg-white border border-slate-200 rounded-xl transition-all duration-300 group hover:shadow-md hover:border-slate-300"
     >
-      <div className="flex items-center justify-between mb-3">
-        <div className={`p-2 rounded-lg bg-gray-50 group-hover:bg-white transition-colors shadow-sm`}>
+      <div className="flex items-center justify-between mb-4">
+        <div className={`p-3 rounded-xl ${theme.bg} ${theme.text} ${theme.hover} ${theme.icon} transition-all duration-300 shadow-sm`}>
           {icon}
         </div>
-        <ArrowRight size={16} className="opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300" />
+        <ArrowRight size={18} className="text-slate-300 -translate-x-2 opacity-0 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300" />
       </div>
-      <h3 className="font-bold text-gray-900">{title}</h3>
-      <p className="text-xs text-gray-500 mt-1">{desc}</p>
+      <h3 className="font-bold text-slate-900 text-lg">{title}</h3>
+      <p className="text-sm text-slate-500 mt-1 font-medium">{desc}</p>
     </Link>
   );
 }

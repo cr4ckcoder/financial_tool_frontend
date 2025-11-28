@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import api from '../lib/api';
-import { Plus, FileText, ArrowLeft, Calendar } from 'lucide-react';
+import { Plus, FileText, ArrowLeft, Calendar, ArrowRight } from 'lucide-react';
 
 interface Work {
   id: number;
@@ -21,7 +21,7 @@ interface Company {
 export default function CompanyDetails() {
   const { id } = useParams();
   const [company, setCompany] = useState<Company | null>(null);
-  const [works, setWorks] = useState<Work[]>([]); // You might need to update backend to fetch works by company
+  const [works, setWorks] = useState<Work[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { register, handleSubmit, reset } = useForm();
 
@@ -31,20 +31,13 @@ export default function CompanyDetails() {
 
   const fetchCompanyData = async () => {
     try {
-      const compRes = await api.get(`/companies/${id}`);
+      // Fetch both Company Info AND its Works in parallel
+      const [compRes, worksRes] = await Promise.all([
+        api.get(`/companies/${id}`),
+        api.get('/works/', { params: { company_id: id } }) // Filter by company
+      ]);
       setCompany(compRes.data);
-      
-      // Note: We might need a specific endpoint to list works for a company
-      // For now, let's assume we fetch all works and filter (Optimization for later: Backend Filter)
-      // Or you can update your backend to return works inside company details (it likely already does via relationship!)
-      // Let's assume compRes.data includes works based on your SQLAlchemy models.
-      // If not, we might need a dedicated fetch.
-      // Checking your backend model: Company has `works = relationship(...)` but Pydantic schema might not include it by default.
-      // Let's assume for now we might need to add it or fetch separately.
-      // For this step, I'll add a quick fetch for works if they aren't in the company object.
-      
-      // Temporary fix: fetch all works and filter client-side (Not efficient for prod, but works for starter)
-      // Ideally: GET /companies/{id}/works
+      setWorks(worksRes.data);
     } catch (error) {
       console.error("Error fetching data", error);
     }
@@ -55,8 +48,7 @@ export default function CompanyDetails() {
       await api.post('/works/', { ...data, company_id: Number(id) });
       setIsModalOpen(false);
       reset();
-      // Refresh page or list
-      alert("Work created! (Reload to see - backend list update needed)"); 
+      fetchCompanyData(); // Refresh list to show new work
     } catch (e) {
       alert("Failed to create work");
     }
@@ -84,15 +76,43 @@ export default function CompanyDetails() {
           onClick={() => setIsModalOpen(true)}
           className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-indigo-700 transition"
         >
-          <Plus size={18} className="mr-2" /> New Work
+          <Plus size={18} className="mr-2" /> New Engagement
         </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {/* Placeholder for Works List - we need to ensure backend sends this data */}
-        <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 text-center text-gray-500 italic">
-          No works visible yet. (We need to wire up the list).
-        </div>
+        {works.length === 0 ? (
+          <div className="col-span-full bg-gray-50 p-8 rounded-xl border border-dashed border-gray-300 text-center text-gray-500">
+            No financial works found for this company. Start a new one!
+          </div>
+        ) : (
+          works.map(work => (
+            <Link key={work.id} to={`/works/${work.id}`} className="group bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:border-indigo-200 transition">
+              <div className="flex justify-between items-start mb-4">
+                <div className="bg-indigo-50 p-3 rounded-lg group-hover:bg-indigo-100 transition">
+                  <FileText size={24} className="text-indigo-600" />
+                </div>
+                <span className={`px-2 py-1 rounded text-xs font-bold ${
+                  work.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                }`}>
+                  {work.status}
+                </span>
+              </div>
+              
+              <h3 className="font-bold text-gray-800 text-lg mb-1">
+                 FY {new Date(work.end_date).getFullYear()}
+              </h3>
+              <div className="flex items-center text-sm text-gray-500 mb-4">
+                <Calendar size={14} className="mr-2" />
+                {work.start_date} - {work.end_date}
+              </div>
+              
+              <div className="flex items-center text-indigo-600 font-medium text-sm group-hover:underline">
+                Open Workspace <ArrowRight size={16} className="ml-1" />
+              </div>
+            </Link>
+          ))
+        )}
       </div>
 
       {/* Create Work Modal */}
