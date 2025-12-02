@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { Plus, Building, Search } from 'lucide-react';
+import { Plus, Building, Search, Briefcase } from 'lucide-react';
 import api from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 
 interface Company {
   id: number;
   legal_name: string;
+  client_type: string;
   cin: string;
+  pan: string;
   registered_address: string;
 }
 
@@ -45,13 +47,13 @@ export default function Companies() {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Companies</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Client Companies</h1>
         {user?.role === 'ADMIN' && (
           <button 
             onClick={() => setIsModalOpen(true)}
             className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-indigo-700 transition"
           >
-            <Plus size={18} className="mr-2" /> Add Company
+            <Plus size={18} className="mr-2" /> Add Client
           </button>
         )}
       </div>
@@ -60,9 +62,9 @@ export default function Companies() {
         <table className="w-full text-left">
           <thead className="bg-gray-50 border-b border-gray-100">
             <tr>
-              <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Company Name</th>
-              <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">CIN</th>
-              <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Address</th>
+              <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Client Name</th>
+              <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Type</th>
+              <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">ID (CIN/PAN)</th>
               <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Actions</th>
             </tr>
           </thead>
@@ -73,16 +75,25 @@ export default function Companies() {
                   <div className="bg-indigo-100 p-2 rounded-lg mr-3">
                     <Building size={16} className="text-indigo-600" />
                   </div>
-                  {company.legal_name}
+                  <div>
+                    <div>{company.legal_name}</div>
+                    <div className="text-xs text-gray-500">{company.registered_address}</div>
+                  </div>
                 </td>
-                <td className="px-6 py-4 text-gray-600 font-mono text-sm">{company.cin || '-'}</td>
-                <td className="px-6 py-4 text-gray-600 truncate max-w-xs">{company.registered_address || '-'}</td>
+                <td className="px-6 py-4">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    {company.client_type.replace(/_/g, ' ')}
+                  </span>
+                </td>
+                <td className="px-6 py-4 text-gray-600 font-mono text-xs">
+                  {company.cin || company.pan || '-'}
+                </td>
                 <td className="px-6 py-4 text-right">
                   <Link 
                     to={`/companies/${company.id}`}
                     className="text-indigo-600 hover:text-indigo-900 font-medium text-sm"
                   >
-                    View Details
+                    Manage
                   </Link>
                 </td>
               </tr>
@@ -90,7 +101,7 @@ export default function Companies() {
             {companies.length === 0 && (
               <tr>
                 <td colSpan={4} className="px-6 py-8 text-center text-gray-400">
-                  No companies found.
+                  No clients found. Add one to get started.
                 </td>
               </tr>
             )}
@@ -101,24 +112,63 @@ export default function Companies() {
       {/* Add Company Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl shadow-lg w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Add New Company</h2>
+          <div className="bg-white p-6 rounded-xl shadow-lg w-full max-w-2xl">
+            <h2 className="text-xl font-bold mb-4">Add New Client</h2>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Legal Name</label>
-                <input {...register('legal_name', { required: true })} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Legal Name</label>
+                  <input {...register('legal_name', { required: true })} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Client Type</label>
+                  <select {...register('client_type')} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
+                    <option value="PVT_LTD">Private Limited</option>
+                    <option value="PUBLIC_LTD">Public Limited</option>
+                    <option value="LLP">LLP</option>
+                    <option value="PARTNERSHIP">Partnership Firm</option>
+                    <option value="PROPRIETORSHIP">Proprietorship</option>
+                    <option value="TRUST">Trust</option>
+                    <option value="SOCIETY">Society</option>
+                    <option value="INDIVIDUAL">Individual</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">File Number (Physical)</label>
+                  <input {...register('file_number')} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. FILE-001" />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">CIN (if applicable)</label>
+                  <input {...register('cin')} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">PAN</label>
+                  <input {...register('pan')} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">TAN</label>
+                  <input {...register('tan')} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">GSTIN</label>
+                  <input {...register('gstin')} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Registered Address</label>
+                  <textarea {...register('registered_address')} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" rows={2}></textarea>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">CIN</label>
-                <input {...register('cin')} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                <textarea {...register('registered_address')} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" rows={3}></textarea>
-              </div>
-              <div className="flex justify-end space-x-2 pt-2">
+
+              <div className="flex justify-end space-x-2 pt-4 border-t border-gray-100">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Create</button>
+                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Create Client</button>
               </div>
             </form>
           </div>
